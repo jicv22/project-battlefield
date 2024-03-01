@@ -7,6 +7,7 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Engine/LocalPlayer.h"
+#include "CombatStatics.h"
 
 // to do: Make the character invisible when camera is too close
 ASimpleCharacter::ASimpleCharacter()
@@ -21,25 +22,30 @@ ASimpleCharacter::ASimpleCharacter()
 	iaSprint = CreateDefaultSubobject<UInputAction>(TEXT("InputActionSprint"));
 	iaJump = CreateDefaultSubobject<UInputAction>(TEXT("InputActionJump"));
 	iaPause = CreateDefaultSubobject<UInputAction>(TEXT("InputActionPause"));
+	iaPossessionAbility = CreateDefaultSubobject<UInputAction>(TEXT("InputActionPossessionAbility"));
 
 	springArm->SetupAttachment(GetCapsuleComponent());
 	camera->SetupAttachment(springArm);
 
+	lastControlRotation = FRotator(0);
+
 	GetCharacterMovement()->MaxWalkSpeed = 300.f;
-	maxFlySpeedMain = 0.f;
 	maxSprintSpeed = 600.f;
 	minSprintSpeed = 300.f;
 	GetCharacterMovement()->MaxFlySpeed = 300.f;
 	maxSprintSpeedWhenFlying = 600.f;
 	minSprintSpeedWhenFlying = 300.f;
 
-	isSprinting = false;
-	isMovingWithKeyboard = false;
+	bIsSprinting = false;
+	bIsMovingWithKeyboard = false;
+	bCanBePossessed = true;
+	bCanPossesByInputAction = false;
 
-	camera->FieldOfView = 90;
-	camera->fieldOfViewAim = 50;
-	springArm->TargetArmLength = 150;
-	springArm->targetArmLengthAim = 150;
+
+	camera->FieldOfView = 90.f;
+	camera->fieldOfViewAim = 50.f;
+	springArm->TargetArmLength = 150.f;
+	springArm->targetArmLengthAim = 150.f;
 	springArm->SocketOffset = FVector(0, 70, 50);
 	springArm->socketOffsetAim = FVector(0, 70, 50);
 	springArm->bUsePawnControlRotation = true;
@@ -47,14 +53,26 @@ ASimpleCharacter::ASimpleCharacter()
 	springArm->bInheritPitch = true;
 	springArm->bInheritRoll = false;
 	springArm->bEnableCameraLag = true;
-	springArm->CameraLagMaxDistance = 50;
-	springArm->CameraLagSpeed = 20;
+	springArm->CameraLagMaxDistance = 50.f;
+	springArm->CameraLagSpeed = 20.f;
 
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 	bUseControllerRotationYaw = false;
 
 	GetCapsuleComponent()->SetCapsuleRadius(25.f);
 	GetCapsuleComponent()->SetCapsuleHalfHeight(50.f);
+}
+
+void ASimpleCharacter::Restart()
+{
+	Super::Restart();
+	GetController()->SetControlRotation(lastControlRotation);
+}
+
+void ASimpleCharacter::UnPossessed()
+{
+	Super::UnPossessed();
+	// to do: Do something when unPossessed.
 }
 
 void ASimpleCharacter::BeginPlay()
@@ -71,7 +89,7 @@ void ASimpleCharacter::Tick(float DeltaTime)
 	float characterVelocity = GetVelocity().Length();
 	bool isUnderMinSprintSpeed = GetCharacterMovement()->MovementMode == EMovementMode::MOVE_Walking && characterVelocity < minSprintSpeed;
 	bool isUnderMinSprintSpeedWhenFlying = GetCharacterMovement()->MovementMode == EMovementMode::MOVE_Flying && characterVelocity < minSprintSpeedWhenFlying;
-	if (isSprinting && (isUnderMinSprintSpeed || isUnderMinSprintSpeedWhenFlying) && !isMovingWithKeyboard) StopSprinting();
+	if (bIsSprinting && (isUnderMinSprintSpeed || isUnderMinSprintSpeedWhenFlying) && !bIsMovingWithKeyboard) StopSprinting();
 }
 
 void ASimpleCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -92,9 +110,21 @@ void ASimpleCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 				Input->BindAction(iaSprint, ETriggerEvent::Triggered, this, &ASimpleCharacter::InputActionSprint);
 				Input->BindAction(iaJump, ETriggerEvent::Triggered, this, &ASimpleCharacter::InputActionJump);
 				Input->BindAction(iaPause, ETriggerEvent::Triggered, this, &ASimpleCharacter::InputActionPause);
+				Input->BindAction(iaPossessionAbility, ETriggerEvent::Started, this, &ASimpleCharacter::InputActionPossessionAbilityStarted);
+				Input->BindAction(iaPossessionAbility, ETriggerEvent::Canceled, this, &ASimpleCharacter::InputActionPossessionAbilityCanceled);
+				Input->BindAction(iaPossessionAbility, ETriggerEvent::Triggered, this, &ASimpleCharacter::InputActionPossessionAbilityTriggered);
+				// to do: cancel = posses......hold completed = unposses
+				// to do: add a function to allow the user to posses another character or to unposses the curretn character.
+				// to do: also add a variable to knwo if the player/character can possess another one. this can be use with a time when key is pressed to allow a good functionality when the player cancel the key holding.
 			}
 		}
 	}
+}
+
+bool ASimpleCharacter::IsPossessedByAion()
+{
+	// to do: change this and verify when is possessed by Aion with AI or by Aion Player....
+	return IsPlayerControlled();
 }
 
 void ASimpleCharacter::InputActionMove(const FInputActionInstance& Instance)
@@ -111,13 +141,13 @@ void ASimpleCharacter::InputActionMove(const FInputActionInstance& Instance)
 	AddMovementInput(forwardVector, axisValue.Y);
 	AddMovementInput(FVector(0, 0, 1), axisValue.Z);
 
-	if (GetCharacterMovement()->MovementMode == EMovementMode::MOVE_Walking && !isMovingHorizontally) isMovingWithKeyboard = false;
-	else isMovingWithKeyboard = true;
+	if (GetCharacterMovement()->MovementMode == EMovementMode::MOVE_Walking && !isMovingHorizontally) bIsMovingWithKeyboard = false;
+	else bIsMovingWithKeyboard = true;
 }
 
 void ASimpleCharacter::InputActionMoveCompleted(const FInputActionInstance& Instance)
 {
-	isMovingWithKeyboard = false;
+	bIsMovingWithKeyboard = false;
 }
 
 void ASimpleCharacter::InputActionRotateCamera(const FInputActionInstance& Instance)
@@ -139,7 +169,7 @@ void ASimpleCharacter::StartSprinting()
 			GetCharacterMovement()->MaxWalkSpeed = maxSprintSpeed;
 			break;
 	}
-	isSprinting = true;
+	bIsSprinting = true;
 }
 
 void ASimpleCharacter::StopSprinting()
@@ -153,12 +183,17 @@ void ASimpleCharacter::StopSprinting()
 		GetCharacterMovement()->MaxWalkSpeed = maxWalkSpeedMain;
 		break;
 	}
-	isSprinting = false;
+	bIsSprinting = false;
+}
+
+void ASimpleCharacter::DeactivateCanPossesByInputAction()
+{
+	bCanPossesByInputAction = false;
 }
 
 void ASimpleCharacter::InputActionSprint(const FInputActionInstance& Instance)
 {
-	if (isSprinting)
+	if (bIsSprinting)
 	{
 		StopSprinting();
 	}
@@ -179,8 +214,64 @@ void ASimpleCharacter::InputActionPause(const FInputActionInstance& Instance)
 	GEngine->AddOnScreenDebugMessage(0, 1.f, FColor::Cyan, TEXT("inputActionPause"));
 }
 
+void ASimpleCharacter::InputActionPossessionAbilityStarted(const FInputActionInstance& Instance)
+{
+	bCanPossesByInputAction = true;
+	GetWorldTimerManager().SetTimer(possesDeacIATimerHandle, this, &ASimpleCharacter::DeactivateCanPossesByInputAction, 0.2f, false);
+}
+
+void ASimpleCharacter::InputActionPossessionAbilityCanceled(const FInputActionInstance& Instance)
+{
+	// to do: Destroy the "Aion" robot or the previeous robot when the possession have succeded.
+	// to do: check why the unpossessed character got frezeed.
+	if (!IsPossessedByAion() || !bCanPossesByInputAction) return;
+	
+	bCanPossesByInputAction = false;
+	GEngine->AddOnScreenDebugMessage(0, 1.f, FColor::Cyan, TEXT("Trying to posses something :v"));
+
+	FVector forwardVector = UKismetMathLibrary::GetForwardVector(GetControlRotation());
+
+	FHitResult hitResult;
+	FVector traceStartLocation = camera->GetComponentLocation() + (forwardVector * springArm->TargetArmLength);
+	FVector traceEndLocation = traceStartLocation + (forwardVector * 250); // to do: set a parameter for the possession range
+	FCollisionQueryParams queryParams;
+	queryParams.AddIgnoredActor(this);
+	GetWorld()->SweepSingleByChannel(hitResult, traceStartLocation, traceEndLocation, FQuat::FindBetween(traceStartLocation, traceEndLocation), ECollisionChannel::ECC_WorldDynamic, FCollisionShape::MakeSphere(14.5f), queryParams);
+
+	ASimpleCharacter* hitCharacter = Cast<ASimpleCharacter>(hitResult.GetActor());
+	if (hitResult.bBlockingHit && hitCharacter)
+	{
+		lastControlRotation = GetControlRotation();
+		if (UCombatStatics::ApplyPossession(this, GetController(), hitCharacter))
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Cyan, TEXT("Possession Succeded"));
+		}
+	}
+
+	/*Debug*/
+	DrawDebugSphere(GetWorld(), hitResult.Location, 14.5f, 12, FColor::Blue, false, 2.f);
+	DrawDebugLine(GetWorld(), traceStartLocation, traceEndLocation, hitResult.bBlockingHit ? FColor::Green : FColor::Red, false, 2.f);
+	/*Debug*/
+}
+
+void ASimpleCharacter::InputActionPossessionAbilityTriggered(const FInputActionInstance& Instance)
+{
+	// to do: Create a bool variable "bCanBeUnpossessed" to know if we can execute this Action.
+}
+
 float ASimpleCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
+	Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser); // to do: check if we should or shouldn't use this.
+	if (!CanBeDamaged()) return 0.f;
+
 	GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Emerald, TEXT("I have been damaged by: ") + EventInstigator->GetActorNameOrLabel() + TEXT(" For: ") + FString::SanitizeFloat(DamageAmount) + TEXT(" Damage Points"));
+
 	return DamageAmount;
+}
+
+bool ASimpleCharacter::TakePossession(AController* possessorController)
+{
+	if (!bCanBePossessed) return false;
+	possessorController->Possess(this);
+	return true;
 }

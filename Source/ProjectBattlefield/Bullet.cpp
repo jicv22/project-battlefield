@@ -56,6 +56,7 @@ void ABullet::Tick(float DeltaTime)
 
 void ABullet::StartDestroyProcess(AActor* OtherActor)
 {
+	// to do: focus this method's functionality and create another method to do somethings from here.
 	if (OtherActor != GetInstigator())
 	{
 		if (OtherActor->CanBeDamaged()) UGameplayStatics::ApplyDamage(OtherActor, damage, GetInstigator()->GetController(), this, damageType);

@@ -26,5 +26,5 @@ class PROJECTBATTLEFIELD_API IActorInteractionInterface
 	// Add interface functions to this class. This is the class that will be inherited to implement this interface.
 public:
 	UFUNCTION(BlueprintNativeEvent)
-	void OnActionReceived(); // to do: improve this when needed and add more unctions
+	void method();
 };

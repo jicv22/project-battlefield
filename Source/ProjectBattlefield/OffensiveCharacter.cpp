@@ -91,7 +91,7 @@ void AOffensiveCharacter::InputActionReload(const FInputActionInstance& Instance
 	gun->StartReloading();
 }
 
-// to do: create the possession special ability functionality here to has it like the special ability by default.
+// to do: create childs and implement their own special ability 
 void AOffensiveCharacter::InputActionSpecialAbility(const FInputActionInstance& Instance)
 {
 	GEngine->AddOnScreenDebugMessage(0, 1.f, FColor::Cyan, TEXT("SpecialAbility"));

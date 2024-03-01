@@ -36,6 +36,14 @@ protected:
 	UInputAction* iaJump;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "EnhancedInputs")
 	UInputAction* iaPause;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "EnhancedInputs")
+	UInputAction* iaPossessionAbility;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Simple Character")
+	FTimerHandle possesDeacIATimerHandle;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Simple Character")
+	FRotator lastControlRotation;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Character Movement: Walking")
 	float maxWalkSpeedMain;
@@ -51,18 +59,26 @@ protected:
 	float minSprintSpeedWhenFlying;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Character Movement (General Settings)")
-	bool isSprinting;
+	bool bIsSprinting;
 	UPROPERTY(BlueprintReadWrite, Category = "Character Movement (General Settings)")
-	bool isMovingWithKeyboard;
-	
+	bool bIsMovingWithKeyboard;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Simple Character")
+	bool bCanBePossessed;
+	UPROPERTY(BlueprintReadWrite, Category = "Simple Character")
+	bool bCanPossesByInputAction;
 
 public:
 	ASimpleCharacter();
 
 protected:
+	virtual void Restart() override;
+	virtual void UnPossessed() override;
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
+	UFUNCTION()
+	bool IsPossessedByAion();
 
 	UFUNCTION()
 	virtual void InputActionMove(const FInputActionInstance& Instance);
@@ -71,16 +87,27 @@ protected:
 	UFUNCTION()
 	virtual void InputActionRotateCamera(const FInputActionInstance& Instance);
 	UFUNCTION()
+	virtual void StartSprinting();
+	UFUNCTION()
 	virtual void StopSprinting();
 	UFUNCTION()
-	virtual void StartSprinting();
+	virtual void DeactivateCanPossesByInputAction();
 	UFUNCTION()
 	virtual void InputActionSprint(const FInputActionInstance& Instance);
 	UFUNCTION()
 	virtual void InputActionJump(const FInputActionInstance& Instance);
 	UFUNCTION()
 	virtual void InputActionPause(const FInputActionInstance& Instance);
+	UFUNCTION()
+	virtual void InputActionPossessionAbilityStarted(const FInputActionInstance& Instance);
+	UFUNCTION()
+	virtual void InputActionPossessionAbilityCanceled(const FInputActionInstance& Instance);
+	UFUNCTION()
+	virtual void InputActionPossessionAbilityTriggered(const FInputActionInstance& Instance);
 
 public:
 	float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
+
+	UFUNCTION()
+	virtual bool TakePossession(AController* possessorController);
 };
