@@ -256,7 +256,7 @@ void ASimpleCharacter::InputActionPossessionAbilityCanceled(const FInputActionIn
 
 void ASimpleCharacter::InputActionPossessionAbilityTriggered(const FInputActionInstance& Instance)
 {
-	// to do: Create a bool variable "bCanBeUnpossessed" to know if we can execute this Action.
+	// to do: Create the unpossess functionality...
 }
 
 float ASimpleCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
@@ -272,6 +272,7 @@ float ASimpleCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damag
 bool ASimpleCharacter::TakePossession(AController* possessorController)
 {
 	if (!bCanBePossessed) return false;
+	lastControlRotation = possessorController->GetControlRotation();
 	possessorController->Possess(this);
 	return true;
 }
