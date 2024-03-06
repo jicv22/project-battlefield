@@ -244,10 +244,10 @@ void ASimpleCharacter::InputActionPossessionAbilityCanceled(const FInputActionIn
 
 	FHitResult hitResult;
 	FVector traceStartLocation = camera->GetComponentLocation() + (forwardVector * springArm->TargetArmLength);
-	FVector traceEndLocation = traceStartLocation + (forwardVector * 250); // to do: set a parameter for the possession range
+	FVector traceEndLocation = traceStartLocation + (forwardVector * 500); // to do: set a parameter for the possession range
 	FCollisionQueryParams queryParams;
 	queryParams.AddIgnoredActor(this);
-	GetWorld()->SweepSingleByChannel(hitResult, traceStartLocation, traceEndLocation, FQuat::FindBetween(traceStartLocation, traceEndLocation), ECollisionChannel::ECC_WorldDynamic, FCollisionShape::MakeSphere(14.5f), queryParams);
+	GetWorld()->SweepSingleByChannel(hitResult, traceStartLocation, traceEndLocation, FQuat::FindBetween(traceStartLocation, traceEndLocation), ECollisionChannel::ECC_WorldDynamic, FCollisionShape::MakeSphere(20.f), queryParams);
 
 	ASimpleCharacter* hitCharacter = Cast<ASimpleCharacter>(hitResult.GetActor());
 	if (hitResult.bBlockingHit && hitCharacter)
