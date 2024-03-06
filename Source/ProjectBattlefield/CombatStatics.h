@@ -17,5 +17,5 @@ class PROJECTBATTLEFIELD_API UCombatStatics : public UBlueprintFunctionLibrary
 	GENERATED_BODY()
 	
 public:
-	static bool ApplyPossession(APawn* possessor, AController* possessorController, ASimpleCharacter* possessedCharacter);
+	static bool ApplyPossession(ASimpleCharacter* possessor, AController* possessorController, ASimpleCharacter* possessedCharacter);
 };

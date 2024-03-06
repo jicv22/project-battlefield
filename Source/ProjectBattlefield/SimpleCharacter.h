@@ -9,6 +9,7 @@
 #include "ActorInteractionInterface.h"
 #include "CoreMinimal.h"
 #include "Kismet/GameplayStatics.h"
+#include "Components/TimelineComponent.h"
 
 #include "SimpleCharacter.generated.h"
 
@@ -16,14 +17,19 @@ UCLASS()
 class PROJECTBATTLEFIELD_API ASimpleCharacter : public ACharacter, public IActorInteractionInterface
 {
 	GENERATED_BODY()
-	
-public:
+
+protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Camera")
 	UMainSpringArmComponent* springArm;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Camera")
 	UMainCameraComponent* camera;
 
-protected:
+	UPROPERTY(BlueprintReadWrite, Category = "Timelines")
+	UTimelineComponent* possessionCamTransitionTimeline;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Timelines")
+	UCurveFloat* possessionCamTransitionFloatCurve;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "EnhancedInputs")
 	UInputMappingContext* inputMappingContext;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "EnhancedInputs")
@@ -44,6 +50,9 @@ protected:
 
 	UPROPERTY(BlueprintReadWrite, Category = "Simple Character")
 	FRotator lastControlRotation;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Timelines")
+	FVector lastPossessorCamLocation;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Character Movement: Walking")
 	float maxWalkSpeedMain;
@@ -66,6 +75,9 @@ protected:
 	bool bCanBePossessed;
 	UPROPERTY(BlueprintReadWrite, Category = "Simple Character")
 	bool bCanPossesByInputAction;
+
+	FOnTimelineFloat updateFunctionFloat;
+	FOnTimelineEvent TimelineFinishedEvent;
 
 public:
 	ASimpleCharacter();
@@ -105,9 +117,17 @@ protected:
 	UFUNCTION()
 	virtual void InputActionPossessionAbilityTriggered(const FInputActionInstance& Instance);
 
+	UFUNCTION()
+	virtual void CamTransitionOnPossessionProgress(float value);
+	UFUNCTION()
+	virtual void CamTransitionOnPossessionFinished();
+
 public:
+	UCameraComponent* GetCamera();
+	USpringArmComponent* GetSpringArmComponent();
+
 	float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 
 	UFUNCTION()
-	virtual bool TakePossession(AController* possessorController);
+	virtual bool TakePossession(AController* possessorController, USpringArmComponent* possessorSpringArmComp);
 };

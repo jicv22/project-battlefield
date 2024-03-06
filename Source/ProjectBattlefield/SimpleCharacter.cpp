@@ -14,6 +14,8 @@ ASimpleCharacter::ASimpleCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
+	possessionCamTransitionTimeline = CreateDefaultSubobject<UTimelineComponent>(TEXT("PossessionCamTransitionTimeline"));
+	possessionCamTransitionFloatCurve = CreateDefaultSubobject<UCurveFloat>(TEXT("PossessionCamTransitionFloatCurve"));
 	springArm = CreateDefaultSubobject<UMainSpringArmComponent>(TEXT("SpringArm"));
 	camera = CreateDefaultSubobject<UMainCameraComponent>(TEXT("Camera"));
 	inputMappingContext = CreateDefaultSubobject<UInputMappingContext>(TEXT("InputMappingContext"));
@@ -35,6 +37,7 @@ ASimpleCharacter::ASimpleCharacter()
 	GetCharacterMovement()->MaxFlySpeed = 300.f;
 	maxSprintSpeedWhenFlying = 600.f;
 	minSprintSpeedWhenFlying = 300.f;
+	lastPossessorCamLocation = FVector(0);
 
 	bIsSprinting = false;
 	bIsMovingWithKeyboard = false;
@@ -81,6 +84,14 @@ void ASimpleCharacter::BeginPlay()
 
 	maxWalkSpeedMain = GetCharacterMovement()->MaxWalkSpeed;
 	maxFlySpeedMain = GetCharacterMovement()->MaxFlySpeed;
+
+	updateFunctionFloat.BindDynamic(this, &ASimpleCharacter::CamTransitionOnPossessionProgress);
+	if (possessionCamTransitionFloatCurve)
+	{
+		possessionCamTransitionTimeline->AddInterpFloat(possessionCamTransitionFloatCurve, updateFunctionFloat);
+	}
+	TimelineFinishedEvent.BindUFunction(this, FName("CamTransitionOnPossessionFinished"));
+	possessionCamTransitionTimeline->SetTimelineFinishedFunc(TimelineFinishedEvent);
 }
 
 void ASimpleCharacter::Tick(float DeltaTime)
@@ -259,6 +270,29 @@ void ASimpleCharacter::InputActionPossessionAbilityTriggered(const FInputActionI
 	// to do: Create the unpossess functionality...
 }
 
+void ASimpleCharacter::CamTransitionOnPossessionProgress(float value)
+{
+	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Cyan, FString::SanitizeFloat(value));
+	FVector newCamPosition = FMath::Lerp(lastPossessorCamLocation, FVector(0), value);
+	springArm->SetRelativeLocation(newCamPosition);
+	// to do: Improve to interpolate possessor and possessed's FOV, socket offset and all that kind of things
+}
+
+void ASimpleCharacter::CamTransitionOnPossessionFinished()
+{
+	springArm->bEnableCameraLag = true;
+}
+
+UCameraComponent* ASimpleCharacter::GetCamera()
+{
+	return camera;
+}
+
+USpringArmComponent* ASimpleCharacter::GetSpringArmComponent()
+{
+	return springArm;
+}
+
 float ASimpleCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
 	Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser); // to do: check if we should or shouldn't use this.
@@ -269,10 +303,18 @@ float ASimpleCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damag
 	return DamageAmount;
 }
 
-bool ASimpleCharacter::TakePossession(AController* possessorController)
+bool ASimpleCharacter::TakePossession(AController* possessorController, USpringArmComponent* possessorSpringArmComp)
 {
 	if (!bCanBePossessed) return false;
+
 	lastControlRotation = possessorController->GetControlRotation();
-	possessorController->Possess(this);
+	// to do: change possessorSpringArmComp for just a FVector possessorSpringArmCompLocation or something like that, then we could be requiring something like the possessor's FOV, spring arm socket offset, etc
+	springArm->SetWorldLocation(possessorSpringArmComp->GetComponentLocation());
+	lastPossessorCamLocation = springArm->GetRelativeLocation();
+	springArm->bEnableCameraLag = false;
+
+	possessorController->Possess(this);	
+	possessionCamTransitionTimeline->PlayFromStart();
+	
 	return true;
 }

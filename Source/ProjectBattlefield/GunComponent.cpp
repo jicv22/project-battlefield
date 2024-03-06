@@ -74,9 +74,9 @@ void UGunComponent::Fire()  // to do: Try to do this more standard.
 			GetWorld()->GetTimerManager().SetTimer(gunFireCooldownDeactivatorTimerHandle, this, &UGunComponent::DeactivateGunFireCooldown, gunFireCooldownTime - 0.05f, false);
 
 			ASimpleCharacter* character = Cast<ASimpleCharacter>(GetOwner());
-			FVector cameraLocation = character->camera->GetComponentLocation();
+			FVector cameraLocation = character->GetCamera()->GetComponentLocation();
 			FVector forwardVector = UKismetMathLibrary::GetForwardVector(character->GetControlRotation());
-			FVector traceStartLocation = cameraLocation + (forwardVector * character->springArm->TargetArmLength);
+			FVector traceStartLocation = cameraLocation + (forwardVector * character->GetSpringArmComponent()->TargetArmLength);
 			FVector traceEndLocation = traceStartLocation + (forwardVector * maxFiringDistance);
 
 			FHitResult middleHitResult;
