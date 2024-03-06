@@ -238,7 +238,7 @@ void ASimpleCharacter::InputActionPossessionAbilityCanceled(const FInputActionIn
 	if (!IsPossessedByAion() || !bCanPossesByInputAction) return;
 	
 	bCanPossesByInputAction = false;
-	GEngine->AddOnScreenDebugMessage(0, 1.f, FColor::Cyan, TEXT("Trying to posses something!"));
+	GEngine->AddOnScreenDebugMessage(0, 1.f, FColor::Cyan, TEXT("Trying to posses something"));
 
 	FVector forwardVector = UKismetMathLibrary::GetForwardVector(GetControlRotation());
 
