@@ -46,6 +46,11 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	virtual void Restart() override;
+	virtual void UnPossessed() override;
+
+	UFUNCTION()
+	void Aim(bool shouldAim);
 
 	UFUNCTION()
 	virtual void AimTransitionUpdate(float value);
