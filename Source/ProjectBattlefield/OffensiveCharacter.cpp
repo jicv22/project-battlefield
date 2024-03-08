@@ -18,6 +18,10 @@ AOffensiveCharacter::AOffensiveCharacter()
 	AimTimelineCurve = CreateDefaultSubobject<UCurveFloat>(TEXT("AimTimelineCurve"));
 	gun = CreateDefaultSubobject<UGunComponent>(TEXT("Gun"));
 
+	camera->fieldOfViewAim = 50.f;
+	springArm->targetArmLengthAim = 150.f;
+	springArm->socketOffsetAim = FVector(0, 70, 50);
+
 	bIsAiming = false;
 }
 
@@ -48,6 +52,34 @@ void AOffensiveCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 	}
 }
 
+void AOffensiveCharacter::Restart()
+{
+	Super::Restart();
+	bIsAiming = false;
+}
+
+void AOffensiveCharacter::UnPossessed()
+{
+	Aim(false);
+	Super::UnPossessed();
+}
+
+void AOffensiveCharacter::Aim(bool shouldAim)
+{
+	if (shouldAim)
+	{
+		AimTimeline->Play();
+		bIsAiming = true;
+		springArm->CameraLagMaxDistance = 10;
+	}
+	else
+	{
+		AimTimeline->Reverse();
+		bIsAiming = false;
+		springArm->CameraLagMaxDistance = 50;
+	}
+}
+
 void AOffensiveCharacter::AimTransitionUpdate(float value)
 {
 	float newTargetArmLegnth = FMath::Lerp(springArm->targetArmLengthMain, springArm->targetArmLengthAim, value);
@@ -60,19 +92,7 @@ void AOffensiveCharacter::AimTransitionUpdate(float value)
 
 void AOffensiveCharacter::InputActionAim(const FInputActionInstance& Instance)
 {
-	GEngine->AddOnScreenDebugMessage(0, 1.f, FColor::Cyan, TEXT("inputActionAim"));
-	if (Instance.GetValue().Get<bool>())
-	{
-		AimTimeline->Play();
-		bIsAiming = true;
-		springArm->CameraLagMaxDistance = 10;
-	}
-	else
-	{
-		AimTimeline->Reverse();
-		bIsAiming = false;
-		springArm->CameraLagMaxDistance = 50;
-	}
+	Aim(Instance.GetValue().Get<bool>());
 }
 
 void AOffensiveCharacter::InputActionMeleeAttack(const FInputActionInstance& Instance)

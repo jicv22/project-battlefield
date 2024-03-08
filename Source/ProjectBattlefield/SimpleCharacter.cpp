@@ -10,6 +10,7 @@
 #include "CombatStatics.h"
 
 // to do: Make the character invisible when camera is too close
+// to do: translate the camera position (socket offset) when a wall is close from right side.
 ASimpleCharacter::ASimpleCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -30,6 +31,9 @@ ASimpleCharacter::ASimpleCharacter()
 	camera->SetupAttachment(springArm);
 
 	lastControlRotation = FRotator(0);
+	lastSpringArmLocation = FVector(0);
+	lastSpringArmSocketOffset = FVector(0);
+
 
 	GetCharacterMovement()->MaxWalkSpeed = 300.f;
 	maxSprintSpeed = 600.f;
@@ -37,7 +41,8 @@ ASimpleCharacter::ASimpleCharacter()
 	GetCharacterMovement()->MaxFlySpeed = 300.f;
 	maxSprintSpeedWhenFlying = 600.f;
 	minSprintSpeedWhenFlying = 300.f;
-	lastPossessorCamLocation = FVector(0);
+	lastCameraFOV = 0.f;
+	lastSpringArmTargetArmLength = 0.f;
 
 	bIsSprinting = false;
 	bIsMovingWithKeyboard = false;
@@ -45,12 +50,9 @@ ASimpleCharacter::ASimpleCharacter()
 	bCanPossesByInputAction = false;
 
 
-	camera->FieldOfView = 90.f;
-	camera->fieldOfViewAim = 50.f;
+	camera->FieldOfView = 70.f;
 	springArm->TargetArmLength = 150.f;
-	springArm->targetArmLengthAim = 150.f;
 	springArm->SocketOffset = FVector(0, 70, 50);
-	springArm->socketOffsetAim = FVector(0, 70, 50);
 	springArm->bUsePawnControlRotation = true;
 	springArm->bInheritYaw = true;
 	springArm->bInheritPitch = true;
@@ -273,9 +275,15 @@ void ASimpleCharacter::InputActionPossessionAbilityTriggered(const FInputActionI
 void ASimpleCharacter::CamTransitionOnPossessionProgress(float value)
 {
 	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Cyan, FString::SanitizeFloat(value));
-	FVector newCamPosition = FMath::Lerp(lastPossessorCamLocation, FVector(0), value);
-	springArm->SetRelativeLocation(newCamPosition);
-	// to do: Improve to interpolate possessor and possessed's FOV, socket offset and all that kind of things
+	FVector newSALocation = FMath::Lerp(lastSpringArmLocation, FVector(0), value);
+	FVector newSASocketOffset = FMath::Lerp(lastSpringArmSocketOffset, springArm->socketOffsetMain, value);
+	float newSATargetArmLength = FMath::Lerp(lastSpringArmTargetArmLength, springArm->targetArmLengthMain, value);
+	float newCamFieldOfView = FMath::Lerp(lastCameraFOV, camera->fieldOfViewMain, value);
+
+	springArm->SetRelativeLocation(newSALocation);
+	springArm->SocketOffset = newSASocketOffset;
+	springArm->TargetArmLength = newSATargetArmLength;
+	camera->SetFieldOfView(newCamFieldOfView);
 }
 
 void ASimpleCharacter::CamTransitionOnPossessionFinished()
@@ -303,14 +311,18 @@ float ASimpleCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damag
 	return DamageAmount;
 }
 
-bool ASimpleCharacter::TakePossession(AController* possessorController, USpringArmComponent* possessorSpringArmComp)
+bool ASimpleCharacter::TakePossession(AController* possessorController, USpringArmComponent* possessorSpringArmComp, UCameraComponent* possessorCameraComp)
 {
 	if (!bCanBePossessed) return false;
 
 	lastControlRotation = possessorController->GetControlRotation();
-	// to do: change possessorSpringArmComp for just a FVector possessorSpringArmCompLocation or something like that, then we could be requiring something like the possessor's FOV, spring arm socket offset, etc
+
+	lastSpringArmTargetArmLength = possessorSpringArmComp->TargetArmLength;
+	lastSpringArmSocketOffset = possessorSpringArmComp->SocketOffset;
+	lastCameraFOV = possessorCameraComp->FieldOfView;
 	springArm->SetWorldLocation(possessorSpringArmComp->GetComponentLocation());
-	lastPossessorCamLocation = springArm->GetRelativeLocation();
+	lastSpringArmLocation = springArm->GetRelativeLocation();
+
 	springArm->bEnableCameraLag = false;
 
 	possessorController->Possess(this);	
