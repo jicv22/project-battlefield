@@ -24,12 +24,6 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Camera")
 	UMainCameraComponent* camera;
 
-	UPROPERTY(BlueprintReadWrite, Category = "Timelines")
-	UTimelineComponent* possessionCamTransitionTimeline;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Timelines")
-	UCurveFloat* possessionCamTransitionFloatCurve;
-
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "EnhancedInputs")
 	UInputMappingContext* inputMappingContext;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "EnhancedInputs")
@@ -45,6 +39,12 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "EnhancedInputs")
 	UInputAction* iaPossessionAbility;
 
+	UPROPERTY(BlueprintReadWrite, Category = "Timelines")
+	UTimelineComponent* possessionCamTransitionTimeline;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Timelines")
+	UCurveFloat* possessionCamTransitionFloatCurve;
+
 	UPROPERTY(BlueprintReadOnly, Category = "Simple Character")
 	FTimerHandle possesDeacIATimerHandle;
 
@@ -52,7 +52,9 @@ protected:
 	FRotator lastControlRotation;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Timelines")
-	FVector lastPossessorCamLocation;
+	FVector lastSpringArmLocation; // to do: create a variable similar to these for the camera fov, spring arm socket offset, spring arm target length, etc, for the possession transition
+	UPROPERTY(BlueprintReadWrite, Category = "Timelines")
+	FVector lastSpringArmSocketOffset;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Character Movement: Walking")
 	float maxWalkSpeedMain;
@@ -66,6 +68,10 @@ protected:
 	float maxSprintSpeedWhenFlying;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Character Movement: Flying")
 	float minSprintSpeedWhenFlying;
+	UPROPERTY(BlueprintReadWrite, Category = "Timelines")
+	float lastSpringArmTargetArmLength;
+	UPROPERTY(BlueprintReadWrite, Category = "Timelines")
+	float lastCameraFOV;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Character Movement (General Settings)")
 	bool bIsSprinting;
@@ -129,5 +135,5 @@ public:
 	float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 
 	UFUNCTION()
-	virtual bool TakePossession(AController* possessorController, USpringArmComponent* possessorSpringArmComp);
+	virtual bool TakePossession(AController* possessorController, USpringArmComponent* possessorSpringArmComp, UCameraComponent* possessorCameraComp);
 };
