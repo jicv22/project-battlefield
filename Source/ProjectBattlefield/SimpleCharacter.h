@@ -47,6 +47,8 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Simple Character")
 	FTimerHandle possesDeacIATimerHandle;
+	UPROPERTY(BlueprintReadOnly, Category = "Simple Character")
+	FTimerHandle destroyActorTimerHandle;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Simple Character")
 	FRotator lastControlRotation;
@@ -94,6 +96,7 @@ protected:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	virtual void Destroy();
 
 	UFUNCTION()
 	bool IsPossessedByAion();
