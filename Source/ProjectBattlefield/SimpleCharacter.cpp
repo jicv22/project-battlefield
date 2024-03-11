@@ -76,8 +76,8 @@ void ASimpleCharacter::Restart()
 
 void ASimpleCharacter::UnPossessed()
 {
+	// to do: check why is this unPossessed triggering when start playing
 	Super::UnPossessed();
-	// to do: Do something when unPossessed.
 }
 
 void ASimpleCharacter::BeginPlay()
@@ -132,6 +132,12 @@ void ASimpleCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 			}
 		}
 	}
+}
+
+void ASimpleCharacter::Destroy()
+{
+	Super::Destroy();
+	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, TEXT("Actor Destroyed"));
 }
 
 bool ASimpleCharacter::IsPossessedByAion()
@@ -252,19 +258,19 @@ void ASimpleCharacter::InputActionPossessionAbilityCanceled(const FInputActionIn
 	GetWorld()->SweepSingleByChannel(hitResult, traceStartLocation, traceEndLocation, FQuat::FindBetween(traceStartLocation, traceEndLocation), ECollisionChannel::ECC_WorldDynamic, FCollisionShape::MakeSphere(20.f), queryParams);
 
 	ASimpleCharacter* hitCharacter = Cast<ASimpleCharacter>(hitResult.GetActor());
-	if (hitResult.bBlockingHit && hitCharacter)
-	{
-		lastControlRotation = GetControlRotation();
-		if (UCombatStatics::ApplyPossession(this, GetController(), hitCharacter))
-		{
-			GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Cyan, TEXT("Possession Succeded"));
-		}
-	}
 
 	/*Debug*/
 	DrawDebugSphere(GetWorld(), hitResult.Location, 14.5f, 12, FColor::Blue, false, 2.f);
 	DrawDebugLine(GetWorld(), traceStartLocation, traceEndLocation, hitResult.bBlockingHit ? FColor::Green : FColor::Red, false, 2.f);
 	/*Debug*/
+
+	if (!hitResult.bBlockingHit || !hitCharacter || !UCombatStatics::ApplyPossession(this, GetController(), hitCharacter)) return;
+
+	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Cyan, TEXT("Possession Succeded"));
+	GetRootComponent()->SetVisibility(false, true);
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	GetWorldTimerManager().ClearTimer(destroyActorTimerHandle);
+	GetWorldTimerManager().SetTimer(destroyActorTimerHandle, this, &ASimpleCharacter::Destroy, 3.f, false);
 }
 
 void ASimpleCharacter::InputActionPossessionAbilityTriggered(const FInputActionInstance& Instance)
