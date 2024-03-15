@@ -3,4 +3,6 @@
 
 #include "Colossus9.h"
 
-AColossus9::AColossus9(){}
+AColossus9::AColossus9()
+{
+}
