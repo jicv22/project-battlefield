@@ -27,6 +27,21 @@ void UGunComponent::BeginPlay()
 	
 }
 
+int32 UGunComponent::getLoadedAmmo()
+{
+	return loadedAmmo;
+}
+
+int32 UGunComponent::getTotalAmmoCurrently()
+{
+	return totalAmmoCurrently;
+}
+
+int32 UGunComponent::getMagazineSize()
+{
+	return magazineSize;
+}
+
 void UGunComponent::StartReloading()
 {
 	if (!bIsReloadCooldownActive && loadedAmmo < magazineSize && totalAmmoCurrently > 0)
