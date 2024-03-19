@@ -11,7 +11,14 @@ UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class PROJECTBATTLEFIELD_API UGunComponent : public UActorComponent
 {
 	GENERATED_BODY()
-public:
+
+protected:
+	UPROPERTY(EditDefaultsOnly, Category = "Ammunation")
+	TSubclassOf<ABullet> bullet;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Gun")
+	FVector cannionLocation;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Ammo")
 	int32 loadedAmmo;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Ammo")
@@ -19,21 +26,18 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Ammo")
 	int32 magazineSize;
 
-protected:
-	UPROPERTY(EditDefaultsOnly, Category = "Ammunation")
-	TSubclassOf<ABullet> bullet;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Gun")
-	FVector cannionLocation;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Gun")
 	float gunReloadCooldownTime;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Gun")
 	float gunFireCooldownTime;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Gun")
 	float maxFiringDistance;
+
 	UPROPERTY(BlueprintReadWrite, Category = "Gun")
 	bool bIsReloadCooldownActive;
 	UPROPERTY(BlueprintReadWrite, Category = "Gun")
 	bool bIsGunFireCooldownActive;
+
 	UPROPERTY(BlueprintReadWrite, Category = "Gun Timers")
 	FTimerHandle gunFireCooldownTimerHandle;
 	UPROPERTY(BlueprintReadWrite, Category = "Gun Timers")
@@ -41,13 +45,13 @@ protected:
 	UPROPERTY(BlueprintReadWrite, Category = "Gun Timers")
 	FTimerHandle gunReloadCooldownDeactivatorTimerHandle;
 
-public:	
+public:
 	UGunComponent();
 
-protected:
-	virtual void BeginPlay() override;
+	int32 getLoadedAmmo();
+	int32 getTotalAmmoCurrently();
+	int32 getMagazineSize();
 
-public:
 	UFUNCTION()
 	virtual void StartReloading();
 	UFUNCTION()
@@ -56,6 +60,8 @@ public:
 	virtual void StopShooting();
 
 protected:
+	virtual void BeginPlay() override;
+
 	UFUNCTION()
 	virtual void DeactivateGunFireCooldown();
 	UFUNCTION()
