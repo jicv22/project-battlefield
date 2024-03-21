@@ -6,7 +6,7 @@
 bool UCombatStatics::ApplyPossession(ASimpleCharacter* possessor, AController* possessorController, ASimpleCharacter* possessedCharacter)
 {
 	possessorController->UnPossess();
-	if (!possessedCharacter->TakePossession(possessorController, possessor->GetSpringArmComponent(), possessor->GetCamera()))
+	if (!possessedCharacter->TakePossession(possessor->getPossessorPawn() ? possessor->getPossessorPawn() : possessor, possessorController, possessor->GetSpringArmComponent(), possessor->GetCamera()))
 	{
 		possessorController->Possess(possessor);
 		return false;

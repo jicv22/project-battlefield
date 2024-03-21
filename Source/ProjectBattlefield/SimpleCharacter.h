@@ -24,6 +24,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Camera")
 	UMainCameraComponent* camera;
 
+	UPROPERTY(BlueprintReadWrite)
+	APawn* possessorPawn;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "EnhancedInputs")
 	UInputMappingContext* inputMappingContext;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "EnhancedInputs")
@@ -54,9 +57,9 @@ protected:
 	FRotator lastControlRotation;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Timelines")
-	FVector lastSpringArmLocation; // to do: create a variable similar to these for the camera fov, spring arm socket offset, spring arm target length, etc, for the possession transition
+	FVector lastSpringArmLocation;
 	UPROPERTY(BlueprintReadWrite, Category = "Timelines")
-	FVector lastSpringArmSocketOffset;
+	FVector lastSASocketOffset;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Character Movement: Walking")
 	float maxWalkSpeedMain;
@@ -99,7 +102,9 @@ protected:
 	virtual void Destroy();
 
 	UFUNCTION()
-	bool IsPossessedByAion();
+	virtual void setLastSpringArmLocation(FVector worldLocation);
+	UFUNCTION()
+	virtual void setLastValues(float SATargetArmLength, float cameraFieldOfView, FVector SASocketOffset, FVector SALocation, FRotator controlRotation);
 
 	UFUNCTION()
 	virtual void InputActionMove(const FInputActionInstance& Instance);
@@ -134,9 +139,10 @@ protected:
 public:
 	UCameraComponent* GetCamera();
 	USpringArmComponent* GetSpringArmComponent();
+	APawn* getPossessorPawn();
 
 	float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
-
+	
 	UFUNCTION()
-	virtual bool TakePossession(AController* possessorController, USpringArmComponent* possessorSpringArmComp, UCameraComponent* possessorCameraComp);
+	virtual bool TakePossession(APawn* ogPossessorPawn, AController* possessorController, USpringArmComponent* possessorSpringArmComp, UCameraComponent* possessorCameraComp);
 };
