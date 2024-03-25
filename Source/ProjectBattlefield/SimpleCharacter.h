@@ -13,6 +13,7 @@
 
 #include "SimpleCharacter.generated.h"
 
+// TO DO: transfer all things related to possession ability to the AionClass. We'll have those things (or just some methods) as public to allow an ASimpleCharacter to execute the possess ability but throw Aion. We should be creating or receiven some extra parameters in aion, for example, use a parameter for location and use a pointer to the current possessed robot (and APawn pointer i guess)
 UCLASS()
 class PROJECTBATTLEFIELD_API ASimpleCharacter : public ACharacter, public IActorInteractionInterface
 {
@@ -24,8 +25,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Camera")
 	UMainCameraComponent* camera;
 
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(BlueprintReadWrite, Category = "Possession Ability")
 	APawn* possessorPawn;
+	UPROPERTY(BlueprintReadWrite, Category = "Possession Ability")
+	ASimpleCharacter* possessedCharacter;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "EnhancedInputs")
 	UInputMappingContext* inputMappingContext;
@@ -42,24 +45,23 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "EnhancedInputs")
 	UInputAction* iaPossessionAbility;
 
-	UPROPERTY(BlueprintReadWrite, Category = "Timelines")
-	UTimelineComponent* possessionCamTransitionTimeline;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Timelines")
-	UCurveFloat* possessionCamTransitionFloatCurve;
-
 	UPROPERTY(BlueprintReadOnly, Category = "Simple Character")
 	FTimerHandle possesDeacIATimerHandle;
 	UPROPERTY(BlueprintReadOnly, Category = "Simple Character")
 	FTimerHandle destroyActorTimerHandle;
 
-	UPROPERTY(BlueprintReadWrite, Category = "Simple Character")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Timeline: Possession Transition")
+	UCurveFloat * possessionTransitionCurveFloat;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Timeline: Possession Transition")
+	UTimelineComponent* possessionTransitionTimeline;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Timelines: Possession Transition")
+	FVector lastSASocketOffset;
+	UPROPERTY(BlueprintReadWrite, Category = "Timelines: Possession Transition")
+	FVector lastActorLocation;
+	UPROPERTY(BlueprintReadWrite, Category = "Timelines: Possession Transition")
 	FRotator lastControlRotation;
 
-	UPROPERTY(BlueprintReadWrite, Category = "Timelines")
-	FVector lastSpringArmLocation;
-	UPROPERTY(BlueprintReadWrite, Category = "Timelines")
-	FVector lastSASocketOffset;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Character Movement: Walking")
 	float maxWalkSpeedMain;
@@ -73,10 +75,11 @@ protected:
 	float maxSprintSpeedWhenFlying;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Character Movement: Flying")
 	float minSprintSpeedWhenFlying;
-	UPROPERTY(BlueprintReadWrite, Category = "Timelines")
-	float lastSpringArmTargetArmLength;
-	UPROPERTY(BlueprintReadWrite, Category = "Timelines")
-	float lastCameraFOV;
+	UPROPERTY(BlueprintReadWrite, Category = "Timelines: Possession Transition")
+	float lastCamFieldOfView;
+	UPROPERTY(BlueprintReadWrite, Category = "Timelines: Possession Transition")
+	float lastSATargetArmLength;
+
 
 	UPROPERTY(BlueprintReadWrite, Category = "Character Movement (General Settings)")
 	bool bIsSprinting;
@@ -87,24 +90,18 @@ protected:
 	UPROPERTY(BlueprintReadWrite, Category = "Simple Character")
 	bool bCanPossesByInputAction;
 
-	FOnTimelineFloat updateFunctionFloat;
-	FOnTimelineEvent TimelineFinishedEvent;
+	UPROPERTY(BlueprintReadWrite, Category = "EnhancedInputs")
+	TMap<FString, bool> blockedInputsMap;
 
 public:
 	ASimpleCharacter();
 
 protected:
 	virtual void Restart() override;
-	virtual void UnPossessed() override;
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual void Destroy();
-
-	UFUNCTION()
-	virtual void setLastSpringArmLocation(FVector worldLocation);
-	UFUNCTION()
-	virtual void setLastValues(float SATargetArmLength, float cameraFieldOfView, FVector SASocketOffset, FVector SALocation, FRotator controlRotation);
 
 	UFUNCTION()
 	virtual void InputActionMove(const FInputActionInstance& Instance);
@@ -132,17 +129,17 @@ protected:
 	virtual void InputActionPossessionAbilityTriggered(const FInputActionInstance& Instance);
 
 	UFUNCTION()
-	virtual void CamTransitionOnPossessionProgress(float value);
+	void UpdatePossessionTransition(float alpha);
 	UFUNCTION()
-	virtual void CamTransitionOnPossessionFinished();
+	void FinishedPossessionTransition();
 
 public:
-	UCameraComponent* GetCamera();
-	USpringArmComponent* GetSpringArmComponent();
-	APawn* getPossessorPawn();
+	UMainCameraComponent* GetCameraComponent();
+	UMainSpringArmComponent* GetSpringArmComponent();
+	APawn* GetPossessorPawn();
+	bool CanBePossessed();
 
-	float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
-	
+	float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;	
 	UFUNCTION()
-	virtual bool TakePossession(APawn* ogPossessorPawn, AController* possessorController, USpringArmComponent* possessorSpringArmComp, UCameraComponent* possessorCameraComp);
+	virtual bool TakePossession(APawn* ogPossessorPawn, AController* possessorController);
 };
