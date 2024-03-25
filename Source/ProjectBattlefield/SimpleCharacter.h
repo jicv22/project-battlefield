@@ -13,7 +13,6 @@
 
 #include "SimpleCharacter.generated.h"
 
-// TO DO: transfer all things related to possession ability to the AionClass. We'll have those things (or just some methods) as public to allow an ASimpleCharacter to execute the possess ability but throw Aion. We should be creating or receiven some extra parameters in aion, for example, use a parameter for location and use a pointer to the current possessed robot (and APawn pointer i guess)
 UCLASS()
 class PROJECTBATTLEFIELD_API ASimpleCharacter : public ACharacter, public IActorInteractionInterface
 {
