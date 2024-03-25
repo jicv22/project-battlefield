@@ -4,6 +4,7 @@
 #include "AionZeroZeroOne.h"
 #include "Kismet/KismetMathLibrary.h"
 
+// to do: highlight when we are aiming to a stunned robot to let the user knows that he can possess it.
 AAionZeroZeroOne::AAionZeroZeroOne()
 {
 }
@@ -25,6 +26,5 @@ void AAionZeroZeroOne::InputActionFireGun(const FInputActionInstance& Instance)
 
 void AAionZeroZeroOne::InputActionSpecialAbility(const FInputActionInstance& Instance)
 {
-	// to do: use a type of capsule where the player/camera is seen. Create something to remark the target and when we press the ability button we'll posses that robot if it's valid.
-	GEngine->AddOnScreenDebugMessage(0, 1.f, FColor::Cyan, TEXT("InputActionSpecialAbility"));
+	GEngine->AddOnScreenDebugMessage(0, 1.f, FColor::Cyan, TEXT("This character only have the possession ability ;v"));
 }

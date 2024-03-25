@@ -2,14 +2,18 @@
 
 
 #include "CombatStatics.h"
+#include "Kismet/KismetMathLibrary.h"
 
-bool UCombatStatics::ApplyPossession(ASimpleCharacter* possessor, AController* possessorController, ASimpleCharacter* possessedCharacter)
+bool UCombatStatics::ApplyPossession(ASimpleCharacter* possessor, ASimpleCharacter* possessedCharacter)
 {
-	possessorController->UnPossess();
-	if (!possessedCharacter->TakePossession(possessor->getPossessorPawn() ? possessor->getPossessorPawn() : possessor, possessorController, possessor->GetSpringArmComponent(), possessor->GetCamera()))
+	AController* controller = possessor->GetController();
+	controller->UnPossess();
+
+	if (!possessedCharacter->TakePossession(possessor->GetPossessorPawn() ? possessor->GetPossessorPawn() : possessor, controller))
 	{
-		possessorController->Possess(possessor);
+		controller->Possess(possessor);
 		return false;
 	}
+
 	return true;
 }

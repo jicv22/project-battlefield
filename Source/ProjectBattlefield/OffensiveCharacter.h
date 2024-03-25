@@ -30,9 +30,9 @@ protected:
 	UInputAction* iaReload;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "EnhancedInputs")
 	UInputAction* iaSpecialAbility;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Timelines")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Timelines: Aiming")
 	UTimelineComponent* AimTimeline;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Timelines")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Timelines: Aiming")
 	UCurveFloat* AimTimelineCurve;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Combat")

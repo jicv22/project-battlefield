@@ -15,8 +15,6 @@ ASimpleCharacter::ASimpleCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
-	possessionCamTransitionTimeline = CreateDefaultSubobject<UTimelineComponent>(TEXT("PossessionCamTransitionTimeline"));
-	possessionCamTransitionFloatCurve = CreateDefaultSubobject<UCurveFloat>(TEXT("PossessionCamTransitionFloatCurve"));
 	springArm = CreateDefaultSubobject<UMainSpringArmComponent>(TEXT("SpringArm"));
 	camera = CreateDefaultSubobject<UMainCameraComponent>(TEXT("Camera"));
 	inputMappingContext = CreateDefaultSubobject<UInputMappingContext>(TEXT("InputMappingContext"));
@@ -26,22 +24,33 @@ ASimpleCharacter::ASimpleCharacter()
 	iaJump = CreateDefaultSubobject<UInputAction>(TEXT("InputActionJump"));
 	iaPause = CreateDefaultSubobject<UInputAction>(TEXT("InputActionPause"));
 	iaPossessionAbility = CreateDefaultSubobject<UInputAction>(TEXT("InputActionPossessionAbility"));
+	possessionTransitionTimeline = CreateDefaultSubobject<UTimelineComponent>(TEXT("PossessionTransitionTimeline"));
+	possessionTransitionCurveFloat = CreateDefaultSubobject<UCurveFloat>(TEXT("PossessionTransitionCurveFloat"));
 
 	springArm->SetupAttachment(GetCapsuleComponent());
 	camera->SetupAttachment(springArm);
 
-	lastControlRotation = FRotator(0);
-	lastSpringArmLocation = FVector(0);
-	lastSASocketOffset = FVector(0);
+	blockedInputsMap.Add(TEXT("Move"), false);
+	blockedInputsMap.Add(TEXT("RotateCamera"), false);
+	blockedInputsMap.Add(TEXT("Sprint"), false);
+	blockedInputsMap.Add(TEXT("Jump"), false);
+	blockedInputsMap.Add(TEXT("PossessionAbility"), false);
 
+	lastSASocketOffset = FVector(0);
+	lastActorLocation = FVector(0);
+
+	lastControlRotation = FRotator(0);
+
+	maxWalkSpeedMain = 0.f;
+	maxFlySpeedMain = 0.f;
 	GetCharacterMovement()->MaxWalkSpeed = 300.f;
 	maxSprintSpeed = 600.f;
 	minSprintSpeed = 300.f;
 	GetCharacterMovement()->MaxFlySpeed = 300.f;
 	maxSprintSpeedWhenFlying = 600.f;
 	minSprintSpeedWhenFlying = 300.f;
-	lastCameraFOV = 0.f;
-	lastSpringArmTargetArmLength = 0.f;
+	lastCamFieldOfView = 0.f;
+	lastSATargetArmLength = 0.f;
 
 	bIsSprinting = false;
 	bIsMovingWithKeyboard = false;
@@ -66,21 +75,13 @@ ASimpleCharacter::ASimpleCharacter()
 	GetCapsuleComponent()->SetCapsuleHalfHeight(50.f);
 
 	possessorPawn = nullptr;
+	possessedCharacter = nullptr;
 }
 
 void ASimpleCharacter::Restart()
 {
 	Super::Restart();
 	GetController()->SetControlRotation(lastControlRotation);
-
-	GetRootComponent()->SetVisibility(true, true);
-	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-}
-
-void ASimpleCharacter::UnPossessed()
-{
-	// to do: check why is this unPossessed triggering when start playing
-	Super::UnPossessed();
 }
 
 void ASimpleCharacter::BeginPlay()
@@ -90,11 +91,16 @@ void ASimpleCharacter::BeginPlay()
 	maxWalkSpeedMain = GetCharacterMovement()->MaxWalkSpeed;
 	maxFlySpeedMain = GetCharacterMovement()->MaxFlySpeed;
 
-	updateFunctionFloat.BindDynamic(this, &ASimpleCharacter::CamTransitionOnPossessionProgress);
-	if (possessionCamTransitionFloatCurve) possessionCamTransitionTimeline->AddInterpFloat(possessionCamTransitionFloatCurve, updateFunctionFloat);
-	
-	TimelineFinishedEvent.BindUFunction(this, FName("CamTransitionOnPossessionFinished"));
-	possessionCamTransitionTimeline->SetTimelineFinishedFunc(TimelineFinishedEvent);
+	FOnTimelineFloat updatePossessionTransitionTrack;
+	FOnTimelineEvent possessionTransitionFinishedEvent;
+	updatePossessionTransitionTrack.BindDynamic(this, &ASimpleCharacter::UpdatePossessionTransition);
+
+	possessionTransitionFinishedEvent.BindUFunction(this, FName("FinishedPossessionTransition"));
+	possessionTransitionTimeline->SetTimelineFinishedFunc(possessionTransitionFinishedEvent);
+	if (possessionTransitionCurveFloat)
+	{
+		possessionTransitionTimeline->AddInterpFloat(possessionTransitionCurveFloat, updatePossessionTransitionTrack);
+	}
 }
 
 void ASimpleCharacter::Tick(float DeltaTime)
@@ -127,9 +133,6 @@ void ASimpleCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 				Input->BindAction(iaPossessionAbility, ETriggerEvent::Started, this, &ASimpleCharacter::InputActionPossessionAbilityStarted);
 				Input->BindAction(iaPossessionAbility, ETriggerEvent::Canceled, this, &ASimpleCharacter::InputActionPossessionAbilityCanceled);
 				Input->BindAction(iaPossessionAbility, ETriggerEvent::Triggered, this, &ASimpleCharacter::InputActionPossessionAbilityTriggered);
-				// to do: cancel = posses......hold completed = unposses
-				// to do: add a function to allow the user to posses another character or to unposses the curretn character.
-				// to do: also add a variable to knwo if the player/character can possess another one. this can be use with a time when key is pressed to allow a good functionality when the player cancel the key holding.
 			}
 		}
 	}
@@ -141,27 +144,10 @@ void ASimpleCharacter::Destroy()
 	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, TEXT("Actor Destroyed"));
 }
 
-
-// tricky coversion from world to local location.
-void ASimpleCharacter::setLastSpringArmLocation(FVector worldLocation)
-{
-	FVector ogLocation = springArm->GetComponentLocation();
-	springArm->SetWorldLocation(worldLocation);
-	lastSpringArmLocation = springArm->GetRelativeLocation();
-	springArm->SetWorldLocation(ogLocation);
-}
-
-void ASimpleCharacter::setLastValues(float SATargetArmLength, float cameraFieldOfView, FVector SASocketOffset, FVector SALocation, FRotator controlRotation)
-{
-	lastSpringArmTargetArmLength = SATargetArmLength; // to do: IMPORTANT: remove this variable and replace it with the lastSASocketOffset
-	lastCameraFOV = cameraFieldOfView;
-	lastSASocketOffset = SASocketOffset;
-	setLastSpringArmLocation(SALocation);
-	lastControlRotation = controlRotation;
-}
-
 void ASimpleCharacter::InputActionMove(const FInputActionInstance& Instance)
 {
+	if (blockedInputsMap[TEXT("Move")]) return GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, TEXT("¡Movement Input is Blocked!"));
+
 	FVector3d axisValue = Instance.GetValue().Get<FVector3d>();
 	FVector forwardVector = UKismetMathLibrary::GetForwardVector(FRotator(0, GetControlRotation().Yaw, 0));
 	FVector rightVector = UKismetMathLibrary::GetRightVector(FRotator(0, GetControlRotation().Yaw, 0));
@@ -185,6 +171,7 @@ void ASimpleCharacter::InputActionMoveCompleted(const FInputActionInstance& Inst
 
 void ASimpleCharacter::InputActionRotateCamera(const FInputActionInstance& Instance)
 {
+	if (blockedInputsMap[TEXT("RotateCamera")]) return GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, TEXT("¡RotateCamera Input is Blocked!"));
 	FVector2D axisValues = Instance.GetValue().Get<FVector2D>();
 
 	AddControllerYawInput(axisValues.X * 0.5f);
@@ -226,128 +213,131 @@ void ASimpleCharacter::DeactivateCanPossesByInputAction()
 
 void ASimpleCharacter::InputActionSprint(const FInputActionInstance& Instance)
 {
-	if (bIsSprinting)
+	if (!bIsSprinting && !blockedInputsMap[TEXT("Sprint")])
 	{
-		StopSprinting();
+		StartSprinting();
 	}
 	else
 	{
-		StartSprinting();
+		StopSprinting();
 	}
 }
 
 void ASimpleCharacter::InputActionJump(const FInputActionInstance& Instance)
 {
-	if (Instance.GetValue().Get<bool>()) Jump();
+	if (Instance.GetValue().Get<bool>() && !blockedInputsMap[TEXT("Jump")]) Jump();
 	else StopJumping();
 }
 
 void ASimpleCharacter::InputActionPause(const FInputActionInstance& Instance)
 {
+	if (blockedInputsMap[TEXT("Pause")]) return GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, TEXT("¡Pause Input is Blocked!"));
 	GEngine->AddOnScreenDebugMessage(0, 1.f, FColor::Cyan, TEXT("inputActionPause"));
 }
 
 void ASimpleCharacter::InputActionPossessionAbilityStarted(const FInputActionInstance& Instance)
 {
+	if (blockedInputsMap[TEXT("PossessionAbility")]) return GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, TEXT("¡PossessionAbility Input is Blocked!"));
 	bCanPossesByInputAction = true;
-	GetWorldTimerManager().SetTimer(possesDeacIATimerHandle, this, &ASimpleCharacter::DeactivateCanPossesByInputAction, 0.2f, false);
+	GetWorldTimerManager().SetTimer(possesDeacIATimerHandle, this, &ASimpleCharacter::DeactivateCanPossesByInputAction, 0.25f, false);
 }
 
 void ASimpleCharacter::InputActionPossessionAbilityCanceled(const FInputActionInstance& Instance)
 {
-	if (!bCanPossesByInputAction) return;
-	
+	if (blockedInputsMap[TEXT("PossessionAbility")]) return GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, TEXT("¡PossessionAbility Input is Blocked!"));
+	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Cyan, TEXT("Trying to posses something"));
+
+	if (!bCanPossesByInputAction) return GEngine->AddOnScreenDebugMessage(0, 1.f, FColor::Cyan, TEXT("Possession Time Range already expired"));
 	bCanPossesByInputAction = false;
-	GEngine->AddOnScreenDebugMessage(0, 1.f, FColor::Cyan, TEXT("Trying to posses something"));
 
 	FVector forwardVector = UKismetMathLibrary::GetForwardVector(GetControlRotation());
+	FVector traceStart = GetCameraComponent()->GetComponentLocation() + (forwardVector * GetSpringArmComponent()->TargetArmLength);
+	FVector traceEnd = traceStart + (forwardVector * 750);
 
 	FHitResult hitResult;
-	FVector traceStartLocation = camera->GetComponentLocation() + (forwardVector * springArm->TargetArmLength);
-	FVector traceEndLocation = traceStartLocation + (forwardVector * 500); // to do: set a parameter for the possession range
 	FCollisionQueryParams queryParams;
 	queryParams.AddIgnoredActor(this);
-	GetWorld()->SweepSingleByChannel(hitResult, traceStartLocation, traceEndLocation, FQuat::FindBetween(traceStartLocation, traceEndLocation), ECollisionChannel::ECC_WorldDynamic, FCollisionShape::MakeSphere(20.f), queryParams);
-
-	ASimpleCharacter* hitCharacter = Cast<ASimpleCharacter>(hitResult.GetActor());
+	GetWorld()->LineTraceSingleByChannel(hitResult, traceStart, traceEnd, ECollisionChannel::ECC_Pawn, queryParams);
 
 	/*Debug*/
-	DrawDebugSphere(GetWorld(), hitResult.Location, 14.5f, 12, FColor::Blue, false, 2.f);
-	DrawDebugLine(GetWorld(), traceStartLocation, traceEndLocation, hitResult.bBlockingHit ? FColor::Green : FColor::Red, false, 2.f);
+	DrawDebugLine(GetWorld(), traceStart, !hitResult.bBlockingHit ? traceEnd : hitResult.Location, FColor::Red, false, 5.f);
 	/*Debug*/
 
-	if (!hitResult.bBlockingHit || !hitCharacter || !UCombatStatics::ApplyPossession(this, GetController(), hitCharacter)) return;
+	if (!hitResult.bBlockingHit) return GEngine->AddOnScreenDebugMessage(0, 1.f, FColor::Cyan, TEXT("Nothing Reached :("));
+	
+	/*Debug*/
+	DrawDebugSphere(GetWorld(), hitResult.Location, 10.f, 25, FColor::Green, false, 5.f);
+	/*Debug*/
 
-	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Cyan, TEXT("Possession Succeded"));
+	ASimpleCharacter* characterHit = Cast<ASimpleCharacter>(hitResult.GetActor());
+	if(!characterHit || !characterHit->CanBePossessed()) return GEngine->AddOnScreenDebugMessage(0, 1.f, FColor::Cyan, TEXT("This actor can't be possessed"));
+
+	GEngine->AddOnScreenDebugMessage(0, 1.f, FColor::Cyan, TEXT("¡Yeah! We found a character to possess"));
+
 	GetRootComponent()->SetVisibility(false, true);
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	if (getPossessorPawn())
+	possessedCharacter = characterHit;
+	SetActorRotation(possessedCharacter->GetActorRotation());
+	lastCamFieldOfView = camera->FieldOfView;
+	lastSASocketOffset = springArm->SocketOffset;
+	lastSATargetArmLength = springArm->TargetArmLength;
+	lastActorLocation = GetActorLocation();
+
+	for (auto& inputState : blockedInputsMap)
 	{
-		GetWorldTimerManager().ClearTimer(destroyActorTimerHandle);
-		GetWorldTimerManager().SetTimer(destroyActorTimerHandle, this, &ASimpleCharacter::Destroy, 3.f, false);
+		if (inputState.Key != TEXT("RotateCamera") && inputState.Key != TEXT("Pause")) blockedInputsMap[inputState.Key] = true;
 	}
+	possessionTransitionTimeline->PlayFromStart();
+
+	if (!GetPossessorPawn()) return;
+	GetWorldTimerManager().ClearTimer(destroyActorTimerHandle);
+	GetWorldTimerManager().SetTimer(destroyActorTimerHandle, this, &ASimpleCharacter::Destroy, 3, false);
 }
 
-// to do: refactor/improve this code
 void ASimpleCharacter::InputActionPossessionAbilityTriggered(const FInputActionInstance& Instance)
 {
-	if (!possessorPawn) return GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Cyan, TEXT("¡There is not a possessorPawn Ref!"));
-	
-	ASimpleCharacter* possessor = Cast<ASimpleCharacter>(possessorPawn);
-	if (!possessor) return GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Cyan, TEXT("¡Invalid Cast to ASimpleCharacter!"));
+	if (blockedInputsMap[TEXT("PossessionAbility")]) return GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, TEXT("¡Dis-PossessionAbility Input is Blocked!"));
 
-	AController* controller = GetController();
-	controller->UnPossess();
-	GetRootComponent()->SetVisibility(false, true); // to do: we should move this to another place but, for now, it works here.
-	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-	float capsuleHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
-
-	possessor->GetSpringArmComponent()->bEnableCameraLag = false;
-	possessor->SetActorLocation(FVector(GetActorLocation().X, GetActorLocation().Y, GetActorLocation().Z+(capsuleHalfHeight-(capsuleHalfHeight*0.5))));
-
-	possessor->setLastValues(GetSpringArmComponent()->TargetArmLength, GetCamera()->FieldOfView, GetSpringArmComponent()->SocketOffset, GetSpringArmComponent()->GetComponentLocation(), controller->GetControlRotation());
-
-	controller->Possess(possessor);
-
-	possessor->possessionCamTransitionTimeline->PlayFromStart();
-
-	GetWorldTimerManager().ClearTimer(destroyActorTimerHandle);
-	GetWorldTimerManager().SetTimer(destroyActorTimerHandle, this, &ASimpleCharacter::Destroy, 3.f, false);
 }
 
-void ASimpleCharacter::CamTransitionOnPossessionProgress(float value)
+void ASimpleCharacter::UpdatePossessionTransition(float alpha)
 {
-	FVector newSALocation = FMath::Lerp(lastSpringArmLocation, FVector(0), value); // to do: DON'T SET THE SPRING ARM LOCATION USE ONLY SOCKET OFFSET. BECAUSE IS ANNPOYING FO RHT PLAYER WHILE MOVING or fix it in some other way // note: dispossession is not doing this, only the possession
-	FVector newSASocketOffset = FMath::Lerp(lastSASocketOffset, springArm->socketOffsetMain, value);
-	float newSATargetArmLength = FMath::Lerp(lastSpringArmTargetArmLength, springArm->targetArmLengthMain, value);
-	float newCamFieldOfView = FMath::Lerp(lastCameraFOV, camera->fieldOfViewMain, value);
+	GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Cyan, FString::SanitizeFloat(alpha));
+	float newFieldOfView = FMath::Lerp(lastCamFieldOfView, possessedCharacter->GetCameraComponent()->fieldOfViewMain, alpha);
+	float newTargetArmLength = FMath::Lerp(lastSATargetArmLength, possessedCharacter->GetSpringArmComponent()->targetArmLengthMain, alpha);
+	FVector newSocketOffset = FMath::Lerp(lastSASocketOffset, possessedCharacter->GetSpringArmComponent()->socketOffsetMain, alpha);
+	FVector newActorLocation = FMath::Lerp(lastActorLocation, possessedCharacter->GetActorLocation(), alpha);
 
-	springArm->SetRelativeLocation(newSALocation);
-	springArm->SocketOffset = newSASocketOffset;
-	springArm->TargetArmLength = newSATargetArmLength;
-	camera->SetFieldOfView(newCamFieldOfView);
+	camera->FieldOfView = newFieldOfView;
+	springArm->TargetArmLength = newTargetArmLength;
+	springArm->SocketOffset = newSocketOffset;
+	SetActorLocation(newActorLocation, true);
 }
 
-void ASimpleCharacter::CamTransitionOnPossessionFinished()
+void ASimpleCharacter::FinishedPossessionTransition()
 {
-	springArm->bEnableCameraLag = true;
+	UCombatStatics::ApplyPossession(this, possessedCharacter);
 }
 
-UCameraComponent* ASimpleCharacter::GetCamera()
+UMainCameraComponent* ASimpleCharacter::GetCameraComponent()
 {
 	return camera;
 }
 
-USpringArmComponent* ASimpleCharacter::GetSpringArmComponent()
+UMainSpringArmComponent* ASimpleCharacter::GetSpringArmComponent()
 {
 	return springArm;
 }
 
-APawn* ASimpleCharacter::getPossessorPawn()
+APawn* ASimpleCharacter::GetPossessorPawn()
 {
 	return possessorPawn;
+}
+
+bool ASimpleCharacter::CanBePossessed()
+{
+	return bCanBePossessed;
 }
 
 float ASimpleCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
@@ -360,19 +350,15 @@ float ASimpleCharacter::TakeDamage(float DamageAmount, FDamageEvent const& Damag
 	return DamageAmount;
 }
 
-bool ASimpleCharacter::TakePossession(APawn* ogPossessorPawn, AController* possessorController, USpringArmComponent* possessorSpringArmComp, UCameraComponent* possessorCameraComp)	
+bool ASimpleCharacter::TakePossession(APawn* ogPossessorPawn, AController* possessorController)
 {
 	if (!bCanBePossessed) return false;
 
-	DrawDebugSphere(GetWorld(), GetSpringArmComponent()->GetComponentTransform().InverseTransformPosition(possessorCameraComp->GetComponentLocation()), 10.f, 25, FColor::Red);
-	
-	springArm->bEnableCameraLag = false;
-	setLastValues(possessorSpringArmComp->TargetArmLength, possessorCameraComp->FieldOfView, possessorSpringArmComp->SocketOffset, possessorSpringArmComp->GetComponentLocation(), possessorController->GetControlRotation());
+	possessorPawn = ogPossessorPawn;
 
-	possessorController->Possess(this);	
-	this->possessorPawn = ogPossessorPawn;
+	lastControlRotation = possessorController->GetControlRotation();
 
-	possessionCamTransitionTimeline->PlayFromStart();
-	
+	possessorController->Possess(this);
+
 	return true;
 }
