@@ -309,9 +309,6 @@ void ASimpleCharacter::InputActionPossessionAbilityCanceled(const FInputActionIn
 void ASimpleCharacter::InputActionPossessionAbilityTriggered(const FInputActionInstance& Instance)
 {
 	if (!possessorPawn  || blockedInputsMap[TEXT("PossessionAbility")]) return GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, TEXT("¡Can't use Dispossession Ability!"));
-	
-	// GetWorldTimerManager().ClearTimer(destroyActorTimerHandle);
-	// GetWorldTimerManager().SetTimer(destroyActorTimerHandle, this, &ASimpleCharacter::Destroy, 3, false);
 
 	MakeInvisible();
 

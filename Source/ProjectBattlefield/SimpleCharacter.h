@@ -61,7 +61,6 @@ protected:
 	UPROPERTY(BlueprintReadWrite, Category = "Timelines: Possession Transition")
 	FRotator lastPossessorControlRotation;
 
-
 	UPROPERTY(BlueprintReadWrite, Category = "Character Movement: Walking")
 	float maxWalkSpeedMain;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Character Movement: Walking")
