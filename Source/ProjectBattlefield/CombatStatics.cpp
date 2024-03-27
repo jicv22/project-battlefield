@@ -17,3 +17,10 @@ bool UCombatStatics::ApplyPossession(ASimpleCharacter* possessor, ASimpleCharact
 
 	return true;
 }
+
+void UCombatStatics::ApplyDispossession(ASimpleCharacter* possessedCharacter, ASimpleCharacter* possessor)
+{
+	AController* controller = possessedCharacter->GetController();
+	controller->UnPossess();
+	possessor->TakeDispossession(controller);
+}

@@ -59,8 +59,7 @@ protected:
 	UPROPERTY(BlueprintReadWrite, Category = "Timelines: Possession Transition")
 	FVector lastActorLocation;
 	UPROPERTY(BlueprintReadWrite, Category = "Timelines: Possession Transition")
-	FRotator lastControlRotation;
-
+	FRotator lastPossessorControlRotation;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Character Movement: Walking")
 	float maxWalkSpeedMain;
@@ -88,6 +87,8 @@ protected:
 	bool bCanBePossessed;
 	UPROPERTY(BlueprintReadWrite, Category = "Simple Character")
 	bool bCanPossesByInputAction;
+	UPROPERTY(BlueprintReadWrite, Category = "Simple Character")
+	bool bIsPossessing;
 
 	UPROPERTY(BlueprintReadWrite, Category = "EnhancedInputs")
 	TMap<FString, bool> blockedInputsMap;
@@ -115,6 +116,10 @@ protected:
 	UFUNCTION()
 	virtual void DeactivateCanPossesByInputAction();
 	UFUNCTION()
+	void MakeInvisible();
+	UFUNCTION()
+	void MakeVisible();
+	UFUNCTION()
 	virtual void InputActionSprint(const FInputActionInstance& Instance);
 	UFUNCTION()
 	virtual void InputActionJump(const FInputActionInstance& Instance);
@@ -141,4 +146,6 @@ public:
 	float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;	
 	UFUNCTION()
 	virtual bool TakePossession(APawn* ogPossessorPawn, AController* possessorController);
+	UFUNCTION()
+	virtual void TakeDispossession(AController* playerController);
 };
