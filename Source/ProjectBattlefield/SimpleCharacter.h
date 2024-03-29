@@ -49,17 +49,27 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Simple Character")
 	FTimerHandle destroyActorTimerHandle;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Timeline: Possession Transition")
-	UCurveFloat * possessionTransitionCurveFloat;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Timeline: Possession Transition")
+	UCurveFloat* possessionTransitionCurveFloat;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Timeline: Recoil Transition")
+	UCurveFloat* camRecoilTransitionCurveFloat;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Timeline: Possession Transition")
 	UTimelineComponent* possessionTransitionTimeline;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Timeline: Recoil Transition")
+	UTimelineComponent* camRecoilTransitionTimeline;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Timelines: Possession Transition")
+	FRotator lastPossessorControlRotation;
+	UPROPERTY(BlueprintReadWrite, Category = "Timeline: Recoil Transition")
+	FRotator camRecoilCtrlRotationStart;
+	UPROPERTY(BlueprintReadWrite, Category = "Timeline: Recoil Transition")
+	FRotator camRecoilCtrlRotationEnd;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Timelines: Possession Transition")
 	FVector lastSASocketOffset;
 	UPROPERTY(BlueprintReadWrite, Category = "Timelines: Possession Transition")
 	FVector lastActorLocation;
-	UPROPERTY(BlueprintReadWrite, Category = "Timelines: Possession Transition")
-	FRotator lastPossessorControlRotation;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Character Movement: Walking")
 	float maxWalkSpeedMain;
@@ -77,7 +87,6 @@ protected:
 	float lastCamFieldOfView;
 	UPROPERTY(BlueprintReadWrite, Category = "Timelines: Possession Transition")
 	float lastSATargetArmLength;
-
 
 	UPROPERTY(BlueprintReadWrite, Category = "Character Movement (General Settings)")
 	bool bIsSprinting;
@@ -136,6 +145,8 @@ protected:
 	void UpdatePossessionTransition(float alpha);
 	UFUNCTION()
 	void FinishedPossessionTransition();
+	UFUNCTION()
+	void UpdateCamRecoilTransition(float alpha);
 
 public:
 	UMainCameraComponent* GetCameraComponent();
@@ -148,4 +159,6 @@ public:
 	virtual bool TakePossession(APawn* ogPossessorPawn, AController* possessorController);
 	UFUNCTION()
 	virtual void TakeDispossession(AController* playerController);
+	UFUNCTION()
+	virtual void TakeRecoil(FRotator recoil);
 };

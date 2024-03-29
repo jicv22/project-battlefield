@@ -24,3 +24,8 @@ void UCombatStatics::ApplyDispossession(ASimpleCharacter* possessedCharacter, AS
 	controller->UnPossess();
 	possessor->TakeDispossession(controller);
 }
+
+void UCombatStatics::ApplyRecoil(FRotator recoil, ASimpleCharacter* character)
+{
+	character->TakeRecoil(recoil);
+}
