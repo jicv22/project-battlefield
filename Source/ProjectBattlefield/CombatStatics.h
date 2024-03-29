@@ -19,4 +19,5 @@ class PROJECTBATTLEFIELD_API UCombatStatics : public UBlueprintFunctionLibrary
 public:
 	static bool ApplyPossession(ASimpleCharacter* possessor, ASimpleCharacter* possessedCharacter);
 	static void ApplyDispossession(ASimpleCharacter* possessedCharacter, ASimpleCharacter* possessor);
+	static void ApplyRecoil(FRotator recoil, ASimpleCharacter* character);
 };
