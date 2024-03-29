@@ -60,7 +60,9 @@ void ABullet::StartDestroyProcess(AActor* OtherActor)
 	if (OtherActor != GetInstigator())
 	{
 		if (OtherActor->CanBeDamaged()) UGameplayStatics::ApplyDamage(OtherActor, damage, GetInstigator()->GetController(), this, damageType);
-		DrawDebugSphere(GetWorld(), GetActorLocation(), 10, 25, FColor::Blue, false, 5.f); // debug
+		/* Debug */
+		DrawDebugSphere(GetWorld(), GetActorLocation(), 5.f, 12, FColor::Blue, false, 5.f);
+		/* Debug */
 		capsuleComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		SetActorHiddenInGame(true);
 		GetWorldTimerManager().ClearTimer(bulletDestructionTimerHandle);

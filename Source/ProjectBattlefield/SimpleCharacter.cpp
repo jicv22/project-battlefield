@@ -25,7 +25,9 @@ ASimpleCharacter::ASimpleCharacter()
 	iaPause = CreateDefaultSubobject<UInputAction>(TEXT("InputActionPause"));
 	iaPossessionAbility = CreateDefaultSubobject<UInputAction>(TEXT("InputActionPossessionAbility"));
 	possessionTransitionTimeline = CreateDefaultSubobject<UTimelineComponent>(TEXT("PossessionTransitionTimeline"));
+	camRecoilTransitionTimeline = CreateDefaultSubobject<UTimelineComponent>(TEXT("CamRecoilTransitionTimeline"));
 	possessionTransitionCurveFloat = CreateDefaultSubobject<UCurveFloat>(TEXT("PossessionTransitionCurveFloat"));
+	camRecoilTransitionCurveFloat = CreateDefaultSubobject<UCurveFloat>(TEXT("CamRecoilTransitionCurveFloat"));
 
 	springArm->SetupAttachment(GetCapsuleComponent());
 	camera->SetupAttachment(springArm);
@@ -40,6 +42,7 @@ ASimpleCharacter::ASimpleCharacter()
 	lastActorLocation = FVector(0);
 
 	lastPossessorControlRotation = FRotator(0);
+	camRecoilCtrlRotationTarget = FRotator(0);
 
 	maxWalkSpeedMain = 0.f;
 	maxFlySpeedMain = 0.f;
@@ -93,16 +96,24 @@ void ASimpleCharacter::BeginPlay()
 	maxWalkSpeedMain = GetCharacterMovement()->MaxWalkSpeed;
 	maxFlySpeedMain = GetCharacterMovement()->MaxFlySpeed;
 
-	FOnTimelineFloat updatePossessionTransitionTrack;
-	FOnTimelineEvent possessionTransitionFinishedEvent;
-	updatePossessionTransitionTrack.BindDynamic(this, &ASimpleCharacter::UpdatePossessionTransition);
-
-	possessionTransitionFinishedEvent.BindUFunction(this, FName("FinishedPossessionTransition"));
-	possessionTransitionTimeline->SetTimelineFinishedFunc(possessionTransitionFinishedEvent);
 	if (possessionTransitionCurveFloat)
 	{
+
+		FOnTimelineEvent possessionTransitionFinishedEvent;
+		possessionTransitionFinishedEvent.BindUFunction(this, FName("FinishedPossessionTransition"));
+		possessionTransitionTimeline->SetTimelineFinishedFunc(possessionTransitionFinishedEvent);
+
+		FOnTimelineFloat updatePossessionTransitionTrack;
+		updatePossessionTransitionTrack.BindDynamic(this, &ASimpleCharacter::UpdatePossessionTransition);
 		possessionTransitionTimeline->AddInterpFloat(possessionTransitionCurveFloat, updatePossessionTransitionTrack);
 	}
+	if (camRecoilTransitionCurveFloat)
+	{
+		FOnTimelineFloat updateCamRecoilTransitionTrack;
+		updateCamRecoilTransitionTrack.BindDynamic(this, &ASimpleCharacter::UpdateCamRecoilTransition);
+		camRecoilTransitionTimeline->AddInterpFloat(camRecoilTransitionCurveFloat, updateCamRecoilTransitionTrack);
+	}
+
 }
 
 void ASimpleCharacter::Tick(float DeltaTime)
@@ -280,7 +291,7 @@ void ASimpleCharacter::InputActionPossessionAbilityCanceled(const FInputActionIn
 	if (!hitResult.bBlockingHit) return GEngine->AddOnScreenDebugMessage(0, 1.f, FColor::Cyan, TEXT("Nothing Reached :("));
 	
 	/*Debug*/
-	DrawDebugSphere(GetWorld(), hitResult.Location, 10.f, 25, FColor::Green, false, 5.f);
+	DrawDebugSphere(GetWorld(), hitResult.Location, 5.f, 12, FColor::Green, false, 5.f);
 	/*Debug*/
 
 	ASimpleCharacter* characterHit = Cast<ASimpleCharacter>(hitResult.GetActor());
@@ -359,6 +370,11 @@ void ASimpleCharacter::FinishedPossessionTransition()
 	}
 }
 
+void ASimpleCharacter::UpdateCamRecoilTransition(float alpha)
+{
+	GetController()->SetControlRotation(GetControlRotation()+(camRecoilCtrlRotationTarget*alpha));
+}
+
 UMainCameraComponent* ASimpleCharacter::GetCameraComponent()
 {
 	return camera;
@@ -410,4 +426,10 @@ void ASimpleCharacter::TakeDispossession(AController* playerController)
 	MakeVisible();
 
 	playerController->Possess(this);
+}
+
+void ASimpleCharacter::TakeRecoil(FRotator recoil)
+{
+	camRecoilCtrlRotationTarget = recoil;
+	camRecoilTransitionTimeline->PlayFromStart();
 }

@@ -5,6 +5,7 @@
 #include "SimpleCharacter.h"
 #include "OffensiveCharacter.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "CombatStatics.h"
 
 UGunComponent::UGunComponent()
 {
@@ -14,6 +15,8 @@ UGunComponent::UGunComponent()
 	gunReloadCooldownTime = 1.f;
 	gunFireCooldownTime = .2f;
 	maxFiringDistance = 20000.f;
+	gunFireDisperssion = 1.f;
+	maxGunRecoil = FRotator(-0.05, 0.05, 0);
 	totalAmmoCurrently = 100;
 	loadedAmmo = 10;
 	magazineSize = 10;
@@ -94,26 +97,31 @@ void UGunComponent::Fire()  // to do: Try to do this more standard.
 			FVector traceStartLocation = cameraLocation + (forwardVector * character->GetSpringArmComponent()->TargetArmLength);
 			FVector traceEndLocation = traceStartLocation + (forwardVector * maxFiringDistance);
 
-			FHitResult middleHitResult;
-			FHitResult lowerHitResult;
+			FHitResult hitResult;
 			FCollisionQueryParams queryParams;
 			queryParams.AddIgnoredActor(character);
-			GetWorld()->LineTraceSingleByChannel(middleHitResult, traceStartLocation, traceEndLocation, ECollisionChannel::ECC_WorldDynamic, queryParams);
+			GetWorld()->LineTraceSingleByChannel(hitResult, traceStartLocation, traceEndLocation, ECollisionChannel::ECC_WorldDynamic, queryParams);
 
 			cannionLocation = character->GetActorLocation(); // to do: this cannion position will be the socket located in the robot's gun.
 			FActorSpawnParameters spawnParameters;
 			spawnParameters.Instigator = character;
 			spawnParameters.Owner = character;
-			FRotator actorRotation = UKismetMathLibrary::FindLookAtRotation(cannionLocation, middleHitResult.bBlockingHit ? middleHitResult.Location : traceEndLocation);
+			FVector finalLookAtTarget = (hitResult.bBlockingHit ? hitResult.Location : traceEndLocation)+FVector(FMath::FRandRange(-gunFireDisperssion, gunFireDisperssion), FMath::FRandRange(-gunFireDisperssion, gunFireDisperssion), FMath::FRandRange(-gunFireDisperssion, gunFireDisperssion));
+			FRotator actorRotation = UKismetMathLibrary::FindLookAtRotation(cannionLocation, finalLookAtTarget);
 
 			GetWorld()->SpawnActor<ABullet>(bullet, cannionLocation, actorRotation, spawnParameters);
 
+			double pitch = FMath::FRandRange(-maxGunRecoil.Pitch, maxGunRecoil.Pitch);
+			double yaw = FMath::FRandRange(-maxGunRecoil.Yaw, maxGunRecoil.Yaw);
+			double roll = FMath::FRandRange(-maxGunRecoil.Roll, maxGunRecoil.Roll);
+			UCombatStatics::ApplyRecoil(FRotator(pitch,yaw,roll), Cast<ASimpleCharacter>(GetOwner()));
+
 			// Debug
-			if (middleHitResult.bBlockingHit)
+			if (hitResult.bBlockingHit)
 			{
-				DrawDebugLine(GetWorld(), traceStartLocation, middleHitResult.Location, FColor::Red, false, 5.f);
-				DrawDebugLine(GetWorld(), middleHitResult.Location, traceEndLocation, FColor::Green, false, 5.f);
-				DrawDebugSphere(GetWorld(), middleHitResult.Location, 10.f, 25, FColor::Green, false, 5.f);
+				DrawDebugLine(GetWorld(), traceStartLocation, hitResult.Location, FColor::Red, false, 5.f);
+				DrawDebugLine(GetWorld(), hitResult.Location, traceEndLocation, FColor::Green, false, 5.f);
+				DrawDebugSphere(GetWorld(), hitResult.Location, 5.f, 12, FColor::Green, false, 5.f);
 			}
 			else
 			{

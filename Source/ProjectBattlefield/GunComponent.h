@@ -19,6 +19,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Gun")
 	FVector cannionLocation;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Gun")
+	FRotator maxGunRecoil;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Ammo")
 	int32 loadedAmmo;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Ammo")
@@ -32,6 +35,8 @@ protected:
 	float gunFireCooldownTime;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Gun")
 	float maxFiringDistance;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Gun")
+	float gunFireDisperssion;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Gun")
 	bool bIsReloadCooldownActive;
