@@ -62,9 +62,7 @@ protected:
 	UPROPERTY(BlueprintReadWrite, Category = "Timelines: Possession Transition")
 	FRotator lastPossessorControlRotation;
 	UPROPERTY(BlueprintReadWrite, Category = "Timeline: Recoil Transition")
-	FRotator camRecoilCtrlRotationStart;
-	UPROPERTY(BlueprintReadWrite, Category = "Timeline: Recoil Transition")
-	FRotator camRecoilCtrlRotationEnd;
+	FRotator camRecoilCtrlRotationTarget;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Timelines: Possession Transition")
 	FVector lastSASocketOffset;

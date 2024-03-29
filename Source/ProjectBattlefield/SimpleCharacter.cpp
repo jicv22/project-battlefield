@@ -29,7 +29,6 @@ ASimpleCharacter::ASimpleCharacter()
 	possessionTransitionCurveFloat = CreateDefaultSubobject<UCurveFloat>(TEXT("PossessionTransitionCurveFloat"));
 	camRecoilTransitionCurveFloat = CreateDefaultSubobject<UCurveFloat>(TEXT("CamRecoilTransitionCurveFloat"));
 
-
 	springArm->SetupAttachment(GetCapsuleComponent());
 	camera->SetupAttachment(springArm);
 
@@ -43,8 +42,7 @@ ASimpleCharacter::ASimpleCharacter()
 	lastActorLocation = FVector(0);
 
 	lastPossessorControlRotation = FRotator(0);
-	camRecoilCtrlRotationStart = FRotator(0);
-	camRecoilCtrlRotationEnd = FRotator(0);
+	camRecoilCtrlRotationTarget = FRotator(0);
 
 	maxWalkSpeedMain = 0.f;
 	maxFlySpeedMain = 0.f;
@@ -374,7 +372,7 @@ void ASimpleCharacter::FinishedPossessionTransition()
 
 void ASimpleCharacter::UpdateCamRecoilTransition(float alpha)
 {
-	GetController()->SetControlRotation(GetControlRotation()+(camRecoilCtrlRotationEnd*alpha));
+	GetController()->SetControlRotation(GetControlRotation()+(camRecoilCtrlRotationTarget*alpha));
 }
 
 UMainCameraComponent* ASimpleCharacter::GetCameraComponent()
@@ -432,7 +430,6 @@ void ASimpleCharacter::TakeDispossession(AController* playerController)
 
 void ASimpleCharacter::TakeRecoil(FRotator recoil)
 {
-	camRecoilCtrlRotationStart = GetControlRotation();
-	camRecoilCtrlRotationEnd = recoil;
+	camRecoilCtrlRotationTarget = recoil;
 	camRecoilTransitionTimeline->PlayFromStart();
 }
